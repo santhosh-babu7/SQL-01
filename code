@@ -1,0 +1,244 @@
+-- Healthcare Patient & Treatment System
+
+CREATE DATABASE HealthcareDB;
+USE HealthcareDB;
+
+-- Patients Table
+CREATE TABLE Patients (
+    patient_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    gender VARCHAR(10),
+    city VARCHAR(50),
+    birth_date DATE,
+    registration_date DATE
+);
+
+-- Doctors Table
+CREATE TABLE Doctors (
+    doctor_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    specialization VARCHAR(50),
+    experience_years INT,
+    consultation_fee DECIMAL(10,2)
+);
+
+-- Appointments Table
+CREATE TABLE Appointments (
+    appointment_id INT PRIMARY KEY,
+    patient_id INT,
+    doctor_id INT,
+    appointment_date DATE,
+    status VARCHAR(20), -- Completed, Cancelled, No-Show
+    FOREIGN KEY (patient_id) REFERENCES Patients(patient_id),
+    FOREIGN KEY (doctor_id) REFERENCES Doctors(doctor_id)
+);
+
+-- Treatments Table
+CREATE TABLE Treatments (
+    treatment_id INT PRIMARY KEY,
+    appointment_id INT,
+    diagnosis VARCHAR(100),
+    treatment_given TEXT,
+    medicine_cost DECIMAL(10,2),
+    FOREIGN KEY (appointment_id) REFERENCES Appointments(appointment_id)
+);
+
+-- Bills Table
+CREATE TABLE Bills (
+    bill_id INT PRIMARY KEY,
+    appointment_id INT,
+    billing_date DATE,
+    total_amount DECIMAL(10,2),
+    payment_status VARCHAR(20), -- Paid, Unpaid, Partially Paid
+    FOREIGN KEY (appointment_id) REFERENCES Appointments(appointment_id)
+);
+
+-- Feedback Table
+CREATE TABLE Feedback (
+    feedback_id INT PRIMARY KEY,
+    appointment_id INT,
+    rating INT, -- 1 to 5
+    comments TEXT,
+    FOREIGN KEY (appointment_id) REFERENCES Appointments(appointment_id)
+);
+
+-- Patients
+INSERT INTO Patients VALUES
+(1, 'Arun Menon', 'Male', 'Chennai', '1985-04-10', '2023-01-15'),
+(2, 'Priya Sharma', 'Female', 'Mumbai', '1992-08-25', '2023-03-01'),
+(3, 'Suresh Kumar', 'Male', 'Hyderabad', '1978-11-30', '2023-04-20'),
+(4, 'Meena Iyer', 'Female', 'Bangalore', '2000-06-14', '2023-05-10'),
+(5, 'Rahul Yadav', 'Male', 'Delhi', '1990-12-05', '2023-06-01');
+
+-- Doctors
+INSERT INTO Doctors VALUES
+(101, 'Dr. Asha Reddy', 'Cardiologist', 15, 1200),
+(102, 'Dr. Vikram Patel', 'Dermatologist', 10, 800),
+(103, 'Dr. Lata Singh', 'Neurologist', 20, 1500),
+(104, 'Dr. Rohit Das', 'General Physician', 8, 500);
+
+-- Appointments
+INSERT INTO Appointments VALUES
+(1001, 1, 101, '2023-06-10', 'Completed'),
+(1002, 2, 102, '2023-06-12', 'Completed'),
+(1003, 3, 103, '2023-06-15', 'Cancelled'),
+(1004, 4, 104, '2023-06-20', 'Completed'),
+(1005, 5, 104, '2023-06-22', 'No-Show'),
+(1006, 1, 101, '2023-07-10', 'Completed'),
+(1007, 2, 102, '2023-07-12', 'Completed');
+
+-- Treatments
+INSERT INTO Treatments VALUES
+(501, 1001, 'High BP', 'Medication and lifestyle changes', 1500),
+(502, 1002, 'Acne', 'Topical creams and antibiotics', 900),
+(503, 1004, 'Fever', 'Paracetamol and rest', 300),
+(504, 1006, 'Chest Pain', 'ECG and medication', 2000),
+(505, 1007, 'Skin Allergy', 'Ointments and tablets', 850);
+
+-- Bills
+INSERT INTO Bills VALUES
+(701, 1001, '2023-06-10', 2700, 'Paid'),
+(702, 1002, '2023-06-12', 1700, 'Paid'),
+(703, 1004, '2023-06-20', 800, 'Unpaid'),
+(704, 1006, '2023-07-10', 3200, 'Partially Paid'),
+(705, 1007, '2023-07-12', 1650, 'Paid');
+
+-- Feedback
+INSERT INTO Feedback VALUES
+(901, 1001, 4, 'Very professional and helpful.'),
+(902, 1002, 5, 'Great experience.'),
+(903, 1004, 3, 'Average service.'),
+(904, 1006, 4, 'Satisfactory consultation.'),
+(905, 1007, 5, 'Excellent doctor and treatment.');
+
+-- 1.Patients and Total Appointments
+
+SELECT p.name,COUNT(a.appointment_id)total_appointments
+FROM Patients p
+JOIN Appointments a ON p.patient_id = a.patient_id
+GROUP BY p.name;
+
+-- 2.Patients Who Had More Than One Appointment
+
+SELECT p.name,COUNT(a.appointment_id)total_appointments
+FROM Patients p
+JOIN Appointments a ON p.patient_id = a.patient_id
+GROUP BY p.name
+HAVING total_appointments>1;
+
+-- 3.List Appointments That Were Cancelled or No-Show
+
+SELECT * FROM Appointments
+WHERE status IN ('Cancelled', 'No-Show');
+
+-- 4.Patients Who Had Their last Appointment in July
+
+SELECT patient_id, MAX(appointment_date) AS first_visit
+FROM Appointments
+GROUP BY patient_id
+HAVING MONTH(first_visit) = 7;
+
+-- 5.Age of All Patients (as of today)
+
+SELECT name,
+       TIMESTAMPDIFF(DAY, birth_date, CURDATE()) AS age
+FROM Patients;
+
+-- 6.Total Revenue Earned by Each Doctor
+
+SELECT d.name,SUM(b.total_amount)
+FROM Doctors d
+JOIN Appointments a ON d.doctor_id=a.doctor_id
+JOIN Bills b ON a.appointment_id = b.appointment_id
+GROUP BY d.name;
+
+-- 7.Total Billed Amount Per City
+
+SELECT p.city,SUM(b.total_amount)
+FROM Patients p
+JOIN Appointments a ON p.patient_id=a.patient_id
+JOIN Bills b ON a.appointment_id = b.appointment_id
+GROUP BY p.city;
+
+-- 8.Unpaid or Partially Paid Bills
+SELECT * FROM bills
+WHERE payment_status IN('Unpaid', 'Partially Paid');
+
+-- 9.Average Payment Made by Patients
+
+SELECT AVG(total_amount) AS avg_payment
+FROM Bills
+WHERE payment_status = 'Paid';
+
+-- 10.Most Expensive Treatment
+
+SELECT * FROM Treatments
+ORDER BY medicine_cost DESC
+LIMIT 1;
+
+-- 11.Treatment Cost Per Appointment
+
+SELECT t.appointment_id, (t.medicine_cost + d.consultation_fee)total_cost
+FROM Treatments t
+JOIN Appointments a ON t.appointment_id = a.appointment_id
+JOIN Doctors d ON a.doctor_id = d.doctor_id;
+
+-- 12.Feedback Score by Doctor
+
+SELECT d.doctor_id,name,ROUND(AVG(rating),2)avg_rating
+FROM Doctors d
+JOIN Appointments a ON d.doctor_id = a.doctor_id
+JOIN Feedback F ON a.appointment_id=F.appointment_id
+GROUP BY d.doctor_id,name
+ORDER BY d.doctor_id;
+
+-- 13.Patients Who Gave Poor Rating (<= 3)
+SELECT p.patient_id,p.name,f.rating
+FROM patients p
+JOIN Appointments a ON p.patient_id=a.patient_id
+JOIN Feedback f ON a.appointment_id=f.appointment_id
+WHERE f.rating <= 3;
+
+-- 14.Rank Doctors by Total Revenue
+
+WITH DoctorRevenue AS(
+SELECT d.name doctor_name,SUM(b.total_amount)total_revenue
+FROM Doctors d
+JOIN Appointments a ON d.doctor_id = a.doctor_id
+JOIN Bills b ON a.appointment_id = b.appointment_id
+GROUP BY doctor_name)
+
+SELECT doctor_name,total_revenue,
+	RANK() OVER(ORDER BY total_revenue DESC)revenue_rank
+FROM DoctorRevenue;
+
+-- 15.Appointments with Running Total of Bill
+
+SELECT b.appointment_id, b.billing_date,b.total_amount,
+       SUM(b.total_amount) OVER(ORDER BY billing_date) AS running_total
+FROM Bills b;
+
+-- 16.ROW_NUMBER of Appointments per Patient
+
+SELECT patient_id, appointment_id,appointment_date,
+       ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY appointment_date) AS visit_number
+FROM Appointments;
+
+-- 17.Patients Without Feedback
+
+SELECT p.name
+FROM Patients p
+JOIN Appointments a ON p.patient_id = a.patient_id
+LEFT JOIN Feedback f ON a.appointment_id = f.appointment_id
+WHERE f.feedback_id IS NULL;
+
+
+
+
+
+
+
+
+
+
+
